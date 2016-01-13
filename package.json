@@ -4,6 +4,7 @@
   "description": "SitterBook Node.js server for iOS app. Using NodeJS Library for Facebook by Thuzi LLC <pshrestha@thuzi.com> (https://github.com/Thuzi)",
   "main": "app.js",
   "scripts": {
+    "start": "node app",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
