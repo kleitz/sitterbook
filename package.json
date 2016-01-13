@@ -1,0 +1,28 @@
+{
+  "name": "sitterbook",
+  "version": "1.0.0",
+  "description": "SitterBook Node.js server for iOS app. Using NodeJS Library for Facebook by Thuzi LLC <pshrestha@thuzi.com> (https://github.com/Thuzi)",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/larskris/sitterbook.git"
+  },
+  "author": "Kristian Larsson",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/larskris/sitterbook/issues"
+  },
+  "homepage": "http://sitterbook.herokuapp.com/",
+  "dependencies": {
+    "debug": "^2.2.0",
+    "ejs": "^2.3.4",
+    "express": "^3.1.0",
+    "fb": "^1.0.1",
+    "firebase": "^2.3.2",
+    "request": "^2.67.0",
+    "step": "0.0.6"
+  }
+}
