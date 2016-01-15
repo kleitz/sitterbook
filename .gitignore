@@ -1,2 +1,3 @@
-# config.js
+# ignore files and folders
+config.js
 node_modules

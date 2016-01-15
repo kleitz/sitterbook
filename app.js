@@ -49,8 +49,10 @@ var dontRunOnStartCounter = 0;
 var stockImage = "http://decaturilmoms.com/wp-content/uploads/2011/06/babysitter.jpg";
 
 userRef.once('value', function (snapshot) {
-  console.log("all users count:", snapshot.key().length);
-  dontRunOnStartCounter = snapshot.key().length;
+  snapshot.forEach(function(user){
+    dontRunOnStartCounter++;
+  });
+  console.log("Total number of users:", dontRunOnStartCounter);
   userRef.on('child_added', function (snapshot) {
     childRef = snapshot.ref();
     childRef.child('lastLogin').on("value", onChange);
