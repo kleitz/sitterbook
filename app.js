@@ -13,8 +13,6 @@ var express   = require('express'),
 
 var app = express();
 
-console.log("app:", app);
-
 if(!config.facebook.appId || !config.facebook.appSecret) {
     throw new Error('facebook appId and appSecret required in config.js');
 }
@@ -187,12 +185,12 @@ function mutualFriends_first(parentID, sitterID, token, lookingForSitters) {
         sitters[parentID][sitterID].numberOfMutual = numberOfMutual;
         sitters[parentID][sitterID].mutualFriends = mutualFriends;
         sitters[parentID][sitterID].cnxScore = numberOfMutual;
-        console.log("first degree sitter-data:", sitters[parentID][sitterID]);
+        // console.log("first degree sitter-data:", sitters[parentID][sitterID]);
       } else {
         parents[sitterID][parentID].numberOfMutual = numberOfMutual;
         parents[sitterID][parentID].mutualFriends = mutualFriends;
         parents[sitterID][parentID].cnxScore = numberOfMutual;
-        console.log("first degree parent-data:", parents[sitterID][parentID]);
+        // console.log("first degree parent-data:", parents[sitterID][parentID]);
       };
       setSitterList(parentID, sitterID, lookingForSitters); // update the firebase database
     };
@@ -203,7 +201,7 @@ function mutualFriends_second(parentID, sitterID, token, lookingForSitters) {
   var hmac = crypto.createHmac('sha256', config.facebook.appSecret);
   hmac.update(token);
   appsecret_proof = hmac.digest('hex');
-  console.log("appsecret_proof:", appsecret_proof);
+  // console.log("appsecret_proof:", appsecret_proof);
   FB.api("/" + (lookingForSitters ? sitterID : parentID), {
     "fields": "context.fields(mutual_friends)",
     access_token: token,
@@ -224,12 +222,12 @@ function mutualFriends_second(parentID, sitterID, token, lookingForSitters) {
         sitters[parentID][sitterID].numberOfMutual = numberOfMutual;
         sitters[parentID][sitterID].cnxScore = numberOfMutual;
         sitters[parentID][sitterID].mutualFriends = mutualFriends;
-        console.log("second degree sitter-data:", sitters[parentID][sitterID]);
+        // console.log("second degree sitter-data:", sitters[parentID][sitterID]);
       } else {
         parents[sitterID][parentID].numberOfMutual = numberOfMutual;
         parents[sitterID][parentID].cnxScore = numberOfMutual;
         parents[sitterID][parentID].mutualFriends = mutualFriends;
-        console.log("second degree parent-data:", parents[sitterID][parentID]);
+        // console.log("second degree parent-data:", parents[sitterID][parentID]);
       };
 
       setSitterList(parentID, sitterID, lookingForSitters); // update the firebase database
@@ -240,7 +238,7 @@ function mutualFriends_second(parentID, sitterID, token, lookingForSitters) {
 function setSitterList(parentID, sitterID, lookingForSitters) {
   if (lookingForSitters) {
     sitterListRef = new Firebase("https://sitterbookapi.firebaseio.com/users/" + parentID + "/sitterList/" + sitterID);
-    console.log(sitters[parentID][sitterID]);
+    // console.log(sitters[parentID][sitterID]);
     sitterListRef.update({
       userName: sitters[parentID][sitterID].userName,
       degree: sitters[parentID][sitterID].degree,
@@ -251,7 +249,7 @@ function setSitterList(parentID, sitterID, lookingForSitters) {
     }); 
   } else {
     parentListRef = new Firebase("https://sitterbookapi.firebaseio.com/users/" + sitterID + "/parentList/" + parentID);
-    console.log(parents[sitterID][parentID]);
+    // console.log(parents[sitterID][parentID]);
     parentListRef.update({
       userName: parents[sitterID][parentID].userName,
       degree: parents[sitterID][parentID].degree,
