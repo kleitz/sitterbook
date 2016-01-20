@@ -204,7 +204,7 @@ function mutualFriends_first(parentID, sitterID, token, lookingForSitters) {
         parents[sitterID][parentID].cnxScore += numberOfMutual;
         // console.log("first degree parent-data:", parents[sitterID][parentID]);
       };
-      setSitterList(parentID, sitterID, lookingForSitters); // update the firebase database
+      setFirebaseList(parentID, sitterID, lookingForSitters); // update the firebase database
     };
   });
 }
@@ -242,13 +242,16 @@ function mutualFriends_second(parentID, sitterID, token, lookingForSitters) {
         // console.log("second degree parent-data:", parents[sitterID][parentID]);
       };
 
-      setSitterList(parentID, sitterID, lookingForSitters); // update the firebase database
+      setFirebaseList(parentID, sitterID, lookingForSitters); // update the firebase database
     };
   });
 }
 
-function setSitterList(parentID, sitterID, lookingForSitters) {
+function setFirebaseList(parentID, sitterID, lookingForSitters) {
   if (lookingForSitters) {
+    if (sitters[parentID][sitterID].sitterSchedMatches.length) {
+      sitters[parentID][sitterID].cnxScore += schedMatchPoints(sitters[parentID][sitterID].sitterSchedMatches.length)
+    };
     sitterListRef = new Firebase("https://sitterbookapi.firebaseio.com/users/" + parentID + "/sitterList/" + sitterID);
     // console.log(sitters[parentID][sitterID]);
     sitterListRef.update({
@@ -261,6 +264,9 @@ function setSitterList(parentID, sitterID, lookingForSitters) {
       sitterSchedMatches: sitters[parentID][sitterID].sitterSchedMatches
     }); 
   } else {
+    if (parents[sitterID][parentID].parentSchedMatches.length) {
+      parents[sitterID][parentID].cnxScore += schedMatchPoints(parents[sitterID][parentID].parentSchedMatches.length)
+    };
     parentListRef = new Firebase("https://sitterbookapi.firebaseio.com/users/" + sitterID + "/parentList/" + parentID);
     // console.log(parents[sitterID][parentID]);
     parentListRef.update({
@@ -301,42 +307,47 @@ function lastSeen(lastLogin) {
   return score;
 }
 
-var schedule = {
-  "fri0" : false,
-  "fri1" : false,
-  "fri2" : false,
-  "mon0" : false,
-  "mon1" : false,
-  "mon2" : false,
-  "sat0" : false,
-  "sat1" : false,
-  "sat2" : false,
-  "sun0" : false,
-  "sun1" : false,
-  "sun2" : false,
-  "thu0" : false,
-  "thu1" : false,
-  "thu2" : false,
-  "tue0" : false,
-  "tue1" : false,
-  "tue2" : false,
-  "wed0" : false,
-  "wed1" : false,
-  "wed2" : false
-};
+// var schedule = {
+//   "fri0" : false,
+//   "fri1" : false,
+//   "fri2" : false,
+//   "mon0" : false,
+//   "mon1" : false,
+//   "mon2" : false,
+//   "sat0" : false,
+//   "sat1" : false,
+//   "sat2" : false,
+//   "sun0" : false,
+//   "sun1" : false,
+//   "sun2" : false,
+//   "thu0" : false,
+//   "thu1" : false,
+//   "thu2" : false,
+//   "tue0" : false,
+//   "tue1" : false,
+//   "tue2" : false,
+//   "wed0" : false,
+//   "wed1" : false,
+//   "wed2" : false
+// };
 
 function schedComp(currentUserSched, userSched) {
   var matches = [];
-  var us = userSched;
-  if (currentUserSched && us) {
+  if (currentUserSched && userSched) {
     for (var timeslot in currentUserSched) {
-      if (currentUserSched[timeslot] && us[timeslot]) {
+      if (currentUserSched[timeslot] && userSched[timeslot]) {
         matches.push(timeslot);
       };
     };
   };
   console.log("Matching timeslots:", matches);
   return matches;
+}
+
+function schedMatchPoints(schedMatches) {
+  var points = ((schedMatches === 1) ? 100 : 150); // change these numbers to balance the cnxScore. One schedule match gives the first value, more matches gives a fix additional amount
+  console.log("Adding", points.toString(), "to the cnxScore due to", schedMatches.toString(), "schedule matches.");
+  return points;
 }
 
 
