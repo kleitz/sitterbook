@@ -99,7 +99,13 @@ function onChange(snapshot) {
         var userZips = userData.zip.split(",");
         if (userID !== currentUserID && userData.sitter === true && userZips.indexOf(currentUserData.parent) > -1) {
           userIDs.push(userID);
-          sitters[currentUserID][userID] = {userName: userData.userName || "baby-sitter", profileImgUrl: userData.profileImgUrl || stockImage};
+          sitters[currentUserID][userID] = {};
+          sitters[currentUserID][userID].cnxScore = 0;
+          sitters[currentUserID][userID].userName = userData.userName || "baby-sitter";
+          sitters[currentUserID][userID].profileImgUrl = userData.profileImgUrl || stockImage;
+          sitters[currentUserID][userID].lastSeen = userData.lastLogin;
+          lastSeen(userData.lastLogin, currentUserID, userID);
+          sitterSched(currentUserData.parentSched, userData.sitterSched, currentUserID, userID);
         };
       });
       match(currentUserID, currentUserData.token, userIDs, true);
@@ -115,7 +121,13 @@ function onChange(snapshot) {
           var userData = user.val();
           if (userID !== currentUserID && currentSitterZips.indexOf(userData.parent) > -1) {
             userIDs.push(userID);
-            parents[currentUserID][userID] = {userName: userData.userName || "parent", profileImgUrl: userData.profileImgUrl || stockImage};
+            parents[currentUserID][userID] = {};
+            parents[currentUserID][userID].cnxScore = 0;
+            parents[currentUserID][userID].userName = userData.userName || "parent";
+            parents[currentUserID][userID].profileImgUrl = userData.profileImgUrl || stockImage;
+            parents[currentUserID][userID].lastSeen = userData.lastLogin;
+            lastSeen(userData.lastLogin, currentUserID, userID);
+            parentSched(currentUserData.sitterSched, userData.parentSched, currentUserID, userID);
           };
         });
         match(currentUserID, currentUserData.token, userIDs, false);
@@ -184,12 +196,12 @@ function mutualFriends_first(parentID, sitterID, token, lookingForSitters) {
       if (lookingForSitters) {
         sitters[parentID][sitterID].numberOfMutual = numberOfMutual;
         sitters[parentID][sitterID].mutualFriends = mutualFriends;
-        sitters[parentID][sitterID].cnxScore = numberOfMutual;
+        sitters[parentID][sitterID].cnxScore += numberOfMutual;
         // console.log("first degree sitter-data:", sitters[parentID][sitterID]);
       } else {
         parents[sitterID][parentID].numberOfMutual = numberOfMutual;
         parents[sitterID][parentID].mutualFriends = mutualFriends;
-        parents[sitterID][parentID].cnxScore = numberOfMutual;
+        parents[sitterID][parentID].cnxScore += numberOfMutual;
         // console.log("first degree parent-data:", parents[sitterID][parentID]);
       };
       setSitterList(parentID, sitterID, lookingForSitters); // update the firebase database
@@ -220,12 +232,12 @@ function mutualFriends_second(parentID, sitterID, token, lookingForSitters) {
       var numberOfMutual = result.context.mutual_friends.summary.total_count;
       if (lookingForSitters) {
         sitters[parentID][sitterID].numberOfMutual = numberOfMutual;
-        sitters[parentID][sitterID].cnxScore = numberOfMutual;
+        sitters[parentID][sitterID].cnxScore += numberOfMutual;
         sitters[parentID][sitterID].mutualFriends = mutualFriends;
         // console.log("second degree sitter-data:", sitters[parentID][sitterID]);
       } else {
         parents[sitterID][parentID].numberOfMutual = numberOfMutual;
-        parents[sitterID][parentID].cnxScore = numberOfMutual;
+        parents[sitterID][parentID].cnxScore += numberOfMutual;
         parents[sitterID][parentID].mutualFriends = mutualFriends;
         // console.log("second degree parent-data:", parents[sitterID][parentID]);
       };
@@ -261,9 +273,63 @@ function setSitterList(parentID, sitterID, lookingForSitters) {
   }
 }
 
-////////////////////////
-//// my stuff above ////
-////////////////////////
+function lastSeen(lastLogin, currentUserID, userID) {
+  // "2016-01-19 21:06:11 +0000"
+  var msLastLogin = Date.parse(lastLogin);
+  var timeNow = Date.now();
+  var timeDiff = timeNow - msLastLogin;
+  var ms2days = 86400000,
+      ms2hours = 3600000,
+      ms2minutes = 60000,
+      ms2seconds = 1000;
+  var diffdays = Math.floor(timeDiff / ms2days);
+  var diffhours = Math.floor((timeDiff % ms2days) / ms2hours);
+  var diffminutes = Math.floor((timeDiff % ms2hours) / ms2minutes);
+  var diffseconds = Math.floor((timeDiff % ms2minutes) / ms2seconds);
+  console.log("Time since last seen:", diffdays, "days,", diffhours, "hours,", diffminutes, "minutes,", diffseconds, "seconds.");
+  var score;
+  if (diffdays > 14) {
+    score = 0;
+  } else if (diffdays === 0) {
+    score = 50;
+  } else { // timeDiff between 1 - 14 days
+    score = Math.floor((1 - (Math.log(timeDiff / ms2days) / Math.log(14))) * 50); // points go from 50 - 0
+  };
+  console.log("Score:", score);
+  sitters[currentUserID][userID].cnxScore += score;
+}
+
+var schedule = {
+  "fri0" : false,
+  "fri1" : false,
+  "fri2" : false,
+  "mon0" : false,
+  "mon1" : false,
+  "mon2" : false,
+  "sat0" : false,
+  "sat1" : false,
+  "sat2" : false,
+  "sun0" : false,
+  "sun1" : false,
+  "sun2" : false,
+  "thu0" : false,
+  "thu1" : false,
+  "thu2" : false,
+  "tue0" : false,
+  "tue1" : false,
+  "tue2" : false,
+  "wed0" : false,
+  "wed1" : false,
+  "wed2" : false
+};
+
+function sitterSched(sched, currentUserID, userID) {
+
+}
+
+function parentSched(sched, currentUserID, userID) {
+  
+}
 
 http.createServer(app).listen(app.get('port'), function() {
     console.log("Express server listening on port " + app.get('port'));
