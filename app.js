@@ -101,11 +101,11 @@ function onChange(snapshot) {
           userIDs.push(userID);
           sitters[currentUserID][userID] = {};
           sitters[currentUserID][userID].cnxScore = 0;
+          sitters[currentUserID][userID].cnxScore += lastSeen(userData.lastLogin);
           sitters[currentUserID][userID].userName = userData.userName || "baby-sitter";
           sitters[currentUserID][userID].profileImgUrl = userData.profileImgUrl || stockImage;
           sitters[currentUserID][userID].lastSeen = userData.lastLogin;
-          lastSeen(userData.lastLogin, currentUserID, userID);
-          sitterSched(currentUserData.parentSched, userData.sitterSched, currentUserID, userID);
+          sitters[currentUserID][userID].sitterSchedMatches = schedComp(currentUserData.parentSched, userData.sitterSched);
         };
       });
       match(currentUserID, currentUserData.token, userIDs, true);
@@ -123,11 +123,11 @@ function onChange(snapshot) {
             userIDs.push(userID);
             parents[currentUserID][userID] = {};
             parents[currentUserID][userID].cnxScore = 0;
+            parents[currentUserID][userID].cnxScore += lastSeen(userData.lastLogin);
             parents[currentUserID][userID].userName = userData.userName || "parent";
             parents[currentUserID][userID].profileImgUrl = userData.profileImgUrl || stockImage;
             parents[currentUserID][userID].lastSeen = userData.lastLogin;
-            lastSeen(userData.lastLogin, currentUserID, userID);
-            parentSched(currentUserData.sitterSched, userData.parentSched, currentUserID, userID);
+            parents[currentUserID][userID].parentSchedMatches = schedComp(currentUserData.sitterSched, userData.parentSched);
           };
         });
         match(currentUserID, currentUserData.token, userIDs, false);
@@ -257,7 +257,8 @@ function setSitterList(parentID, sitterID, lookingForSitters) {
       cnxScore: sitters[parentID][sitterID].cnxScore,
       profileImgUrl: sitters[parentID][sitterID].profileImgUrl,
       numberOfMutual: sitters[parentID][sitterID].numberOfMutual,
-      mutualFriends: sitters[parentID][sitterID].mutualFriends
+      mutualFriends: sitters[parentID][sitterID].mutualFriends,
+      sitterSchedMatches: sitters[parentID][sitterID].sitterSchedMatches
     }); 
   } else {
     parentListRef = new Firebase("https://sitterbookapi.firebaseio.com/users/" + sitterID + "/parentList/" + parentID);
@@ -268,12 +269,13 @@ function setSitterList(parentID, sitterID, lookingForSitters) {
       cnxScore: parents[sitterID][parentID].cnxScore,
       profileImgUrl: parents[sitterID][parentID].profileImgUrl,
       numberOfMutual: parents[sitterID][parentID].numberOfMutual,
-      mutualFriends: parents[sitterID][parentID].mutualFriends
+      mutualFriends: parents[sitterID][parentID].mutualFriends,
+      parentSchedMatches: parents[sitterID][parentID].parentSchedMatches
     }); 
   }
 }
 
-function lastSeen(lastLogin, currentUserID, userID) {
+function lastSeen(lastLogin) {
   // "2016-01-19 21:06:11 +0000"
   var msLastLogin = Date.parse(lastLogin);
   var timeNow = Date.now();
@@ -296,7 +298,7 @@ function lastSeen(lastLogin, currentUserID, userID) {
     score = Math.floor((1 - (Math.log(timeDiff / ms2days) / Math.log(14))) * 50); // points go from 50 - 0
   };
   console.log("Score:", score);
-  sitters[currentUserID][userID].cnxScore += score;
+  return score;
 }
 
 var schedule = {
@@ -323,13 +325,20 @@ var schedule = {
   "wed2" : false
 };
 
-function sitterSched(sched, currentUserID, userID) {
-
+function schedComp(currentUserSched, userSched) {
+  var matches = [];
+  var us = userSched;
+  if (currentUserSched && us) {
+    for (var timeslot in currentUserSched) {
+      if (currentUserSched[timeslot] && us[timeslot]) {
+        matches.push(timeslot);
+      };
+    };
+  };
+  console.log("Matching timeslots:", matches);
+  return matches;
 }
 
-function parentSched(sched, currentUserID, userID) {
-  
-}
 
 http.createServer(app).listen(app.get('port'), function() {
     console.log("Express server listening on port " + app.get('port'));
