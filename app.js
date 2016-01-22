@@ -106,6 +106,7 @@ function onChange(snapshot) {
           sitters[currentUserID][userID].userName = userData.userName || "baby-sitter";
           sitters[currentUserID][userID].profileImgUrl = userData.profileImgUrl || stockImage;
           sitters[currentUserID][userID].lastSeen = userData.lastLogin;
+          sitters[currentUserID][userID].SitterSchedule = userData.sitterSched;
           sitters[currentUserID][userID].sitterSchedMatches = schedVar[0];
           sitters[currentUserID][userID].cnxScore += schedMatchPoints(schedVar[1]);
         };
@@ -130,6 +131,7 @@ function onChange(snapshot) {
             parents[currentUserID][userID].userName = userData.userName || "parent";
             parents[currentUserID][userID].profileImgUrl = userData.profileImgUrl || stockImage;
             parents[currentUserID][userID].lastSeen = userData.lastLogin;
+            parents[currentUserID][userID].ParentSchedule = userData.parentSched
             parents[currentUserID][userID].parentSchedMatches = schedVar[0];
             parents[currentUserID][userID].cnxScore += schedMatchPoints(schedVar[1]);
           };
@@ -261,7 +263,8 @@ function setFirebaseList(parentID, sitterID, lookingForSitters) {
       profileImgUrl: sitters[parentID][sitterID].profileImgUrl,
       numberOfMutual: sitters[parentID][sitterID].numberOfMutual,
       mutualFriends: sitters[parentID][sitterID].mutualFriends,
-      sitterSchedMatches: sitters[parentID][sitterID].sitterSchedMatches
+      sitterSchedMatches: sitters[parentID][sitterID].sitterSchedMatches,
+      SitterSchedule: sitters[parentID][sitterID].SitterSchedule
     }); 
   } else {
     parentListRef = new Firebase("https://sitterbookapi.firebaseio.com/users/" + sitterID + "/parentList/" + parentID);
@@ -272,7 +275,8 @@ function setFirebaseList(parentID, sitterID, lookingForSitters) {
       profileImgUrl: parents[sitterID][parentID].profileImgUrl,
       numberOfMutual: parents[sitterID][parentID].numberOfMutual,
       mutualFriends: parents[sitterID][parentID].mutualFriends,
-      parentSchedMatches: parents[sitterID][parentID].parentSchedMatches
+      parentSchedMatches: parents[sitterID][parentID].parentSchedMatches,
+      ParentSchedule: parents[sitterID][parentID].ParentSchedule
     }); 
   }
 }
