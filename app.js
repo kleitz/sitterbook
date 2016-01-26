@@ -166,8 +166,10 @@ function areFriends(parentID, sitterID, token, lookingForSitters) {
     if (response && !response.error && response.data.length) {
       if (lookingForSitters) {
         sitters[parentID][sitterID].degree = 1;
+        sitters[parentID][sitterID].cnxScore += 40;
       } else {
         parents[sitterID][parentID].degree = 1;
+        parents[sitterID][parentID].cnxScore += 40;
       };
       mutualFriends_first(parentID, sitterID, token, lookingForSitters);
     } else { // not first degree friends
@@ -202,12 +204,12 @@ function mutualFriends_first(parentID, sitterID, token, lookingForSitters) {
       if (lookingForSitters) {
         sitters[parentID][sitterID].numberOfMutual = numberOfMutual;
         sitters[parentID][sitterID].mutualFriends = mutualFriends;
-        sitters[parentID][sitterID].cnxScore += numberOfMutual;
+        sitters[parentID][sitterID].cnxScore += mutualFriendsPoints(numberOfMutual);
         // console.log("first degree sitter-data:", sitters[parentID][sitterID]);
       } else {
         parents[sitterID][parentID].numberOfMutual = numberOfMutual;
         parents[sitterID][parentID].mutualFriends = mutualFriends;
-        parents[sitterID][parentID].cnxScore += numberOfMutual;
+        parents[sitterID][parentID].cnxScore += mutualFriendsPoints(numberOfMutual);
         // console.log("first degree parent-data:", parents[sitterID][parentID]);
       };
       setFirebaseList(parentID, sitterID, lookingForSitters); // update the firebase database
@@ -238,12 +240,12 @@ function mutualFriends_second(parentID, sitterID, token, lookingForSitters) {
       var numberOfMutual = result.context.mutual_friends.summary.total_count;
       if (lookingForSitters) {
         sitters[parentID][sitterID].numberOfMutual = numberOfMutual;
-        sitters[parentID][sitterID].cnxScore += numberOfMutual;
+        sitters[parentID][sitterID].cnxScore += mutualFriendsPoints(numberOfMutual)
         sitters[parentID][sitterID].mutualFriends = mutualFriends;
         // console.log("second degree sitter-data:", sitters[parentID][sitterID]);
       } else {
         parents[sitterID][parentID].numberOfMutual = numberOfMutual;
-        parents[sitterID][parentID].cnxScore += numberOfMutual;
+        parents[sitterID][parentID].cnxScore += mutualFriendsPoints(numberOfMutual)
         parents[sitterID][parentID].mutualFriends = mutualFriends;
         // console.log("second degree parent-data:", parents[sitterID][parentID]);
       };
@@ -353,6 +355,18 @@ function schedMatchPoints(schedMatches) {
     points = 150;
   };
   console.log("Adding", points.toString(), "points to the cnxScore due to", schedMatches.toString(), "schedule matches.");
+  return points;
+}
+
+function mutualFriendsPoints(numberOfMutual) {
+  var points = 0;
+  if (numberOfMutual > 0) {
+    points = numberOfMutual;
+  }
+  if (numberOfMutual > 50) {
+    points = 50;
+  }
+  console.log("Adding", points, "points for mutual friends");
   return points;
 }
 
