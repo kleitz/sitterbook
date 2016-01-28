@@ -1,3 +1,8 @@
+// heroku ps:scale web=0 to turn off heroku app
+// heroku ps:scale web=1 to turn it back on
+// heroku maintenance:on
+// heroku maintenance:off
+
 
 var express   = require('express'),
     FB        = require('fb'),
@@ -45,6 +50,7 @@ var parents = {};
 var dontRunOnStart = true;
 var dontRunOnStartCounter = 0;
 var stockImage = "http://decaturilmoms.com/wp-content/uploads/2011/06/babysitter.jpg";
+var pictureHash = {};
 
 userRef.once('value', function (snapshot) {
   snapshot.forEach(function(user){
@@ -97,6 +103,7 @@ function onChange(snapshot) {
         var userID = user.key();
         var userData = user.val();
         var userZips = userData.zip.split(",");
+        pictureHash[userID] = userData.profileImgUrl;
         if (userID !== currentUserID && userData.sitter === true && userZips.indexOf(currentUserData.parent) > -1) {
           userIDs.push(userID);
           var schedVar = schedComp(currentUserData.parentSched, userData.sitterSched);
@@ -122,6 +129,7 @@ function onChange(snapshot) {
         allUsers.forEach(function(user) {
           var userID = user.key();
           var userData = user.val();
+          pictureHash[userID] = userData.profileImgUrl;
           if (userID !== currentUserID && currentSitterZips.indexOf(userData.parent) > -1) {
             userIDs.push(userID);
             var schedVar = schedComp(currentUserData.sitterSched, userData.parentSched);
@@ -195,22 +203,19 @@ function mutualFriends_first(parentID, sitterID, token, lookingForSitters) {
     } else {
       console.log("==================================================");
       console.log("Mutual friends for:", lookingForSitters ? sitterID : parentID, lookingForSitters ? sitters[parentID][sitterID].userName : parents[sitterID][parentID].userName);
-      var mutualFriends = result.context.all_mutual_friends.data;
-      // mutualFriends.forEach(function(friend){
-      //   console.log(friend.name);
-      //   console.log(friend.picture.data.url);
-      // });
+      var mutualFriends = [];
+      result.context.all_mutual_friends.data.forEach(function(friend){
+        mutualFriends.push({name: friend.name, id: friend.id || false, picture: friend.picture.data.url})
+      });
       var numberOfMutual = result.context.all_mutual_friends.summary.total_count;
       if (lookingForSitters) {
         sitters[parentID][sitterID].numberOfMutual = numberOfMutual;
         sitters[parentID][sitterID].mutualFriends = mutualFriends;
         sitters[parentID][sitterID].cnxScore += mutualFriendsPoints(numberOfMutual);
-        // console.log("first degree sitter-data:", sitters[parentID][sitterID]);
       } else {
         parents[sitterID][parentID].numberOfMutual = numberOfMutual;
         parents[sitterID][parentID].mutualFriends = mutualFriends;
         parents[sitterID][parentID].cnxScore += mutualFriendsPoints(numberOfMutual);
-        // console.log("first degree parent-data:", parents[sitterID][parentID]);
       };
       setFirebaseList(parentID, sitterID, lookingForSitters); // update the firebase database
     };
@@ -221,9 +226,8 @@ function mutualFriends_second(parentID, sitterID, token, lookingForSitters) {
   var hmac = crypto.createHmac('sha256', config.facebook.appSecret);
   hmac.update(token);
   appsecret_proof = hmac.digest('hex');
-  // console.log("appsecret_proof:", appsecret_proof);
   FB.api("/" + (lookingForSitters ? sitterID : parentID), {
-    "fields": "context.fields(mutual_friends)",
+    "fields": ["context.fields(mutual_friends)", "picture"],
     access_token: token,
     appsecret_proof: appsecret_proof
   }, function (result) {
@@ -232,22 +236,17 @@ function mutualFriends_second(parentID, sitterID, token, lookingForSitters) {
     } else {
       console.log("==================================================");
       console.log("Mutual friends for:", lookingForSitters ? sitterID : parentID, lookingForSitters ? sitters[parentID][sitterID].userName : parents[sitterID][parentID].userName);
-
+      console.log("Mutual Friends result.context.mutual_friends:", result.context.mutual_friends);
       var mutualFriends = result.context.mutual_friends.data;
-      // mutualFriends.forEach(function(friend){
-      //   console.log(friend.name);
-      // });
       var numberOfMutual = result.context.mutual_friends.summary.total_count;
       if (lookingForSitters) {
         sitters[parentID][sitterID].numberOfMutual = numberOfMutual;
         sitters[parentID][sitterID].cnxScore += mutualFriendsPoints(numberOfMutual)
-        sitters[parentID][sitterID].mutualFriends = mutualFriends;
-        // console.log("second degree sitter-data:", sitters[parentID][sitterID]);
+        sitters[parentID][sitterID].mutualFriends = getPictures(mutualFriends)
       } else {
         parents[sitterID][parentID].numberOfMutual = numberOfMutual;
         parents[sitterID][parentID].cnxScore += mutualFriendsPoints(numberOfMutual)
-        parents[sitterID][parentID].mutualFriends = mutualFriends;
-        // console.log("second degree parent-data:", parents[sitterID][parentID]);
+        parents[sitterID][parentID].mutualFriends = getPictures(mutualFriends);
       };
 
       setFirebaseList(parentID, sitterID, lookingForSitters); // update the firebase database
@@ -255,8 +254,19 @@ function mutualFriends_second(parentID, sitterID, token, lookingForSitters) {
   });
 }
 
+function getPictures(mutualFriends){
+  console.log("pictureHash:", pictureHash);
+  var returnArray = [];
+  mutualFriends.forEach(function(friend){
+    console.log("getPicture:", pictureHash[friend.id], "/ id:", friend.id);
+    returnArray.push({name: friend.name, id: friend.id, picture: pictureHash[friend.id] || stockImage});
+  });
+  return returnArray;
+}
+
 function setFirebaseList(parentID, sitterID, lookingForSitters) {
   if (lookingForSitters) {
+    console.log("======", sitters[parentID][sitterID].mutualFriends);
     sitterListRef = new Firebase("https://sitterbookapi.firebaseio.com/users/" + parentID + "/sitterList/" + sitterID);
     sitterListRef.update({
       userName: sitters[parentID][sitterID].userName,
