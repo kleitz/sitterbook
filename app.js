@@ -14,7 +14,8 @@ var express   = require('express'),
     ref       = new Firebase("https://sitterbookapi.firebaseio.com"),
     userRef   = new Firebase("https://sitterbookapi.firebaseio.com/users"),
 
-    config    = require('./config');
+    config    = require('./config'),
+    macs      = require('./matching_algorithm'); // Matching Algorithm Connection Score
 
 var app = express();
 
@@ -109,13 +110,13 @@ function onChange(snapshot) {
           var schedVar = schedComp(currentUserData.parentSched, userData.sitterSched);
           sitters[currentUserID][userID] = {};
           sitters[currentUserID][userID].cnxScore = 0;
-          sitters[currentUserID][userID].cnxScore += lastSeen(userData.lastLogin);
+          sitters[currentUserID][userID].cnxScore += macs.lastSeen(userData.lastLogin);
           sitters[currentUserID][userID].userName = userData.userName || "baby-sitter";
           sitters[currentUserID][userID].profileImgUrl = userData.profileImgUrl || stockImage;
           sitters[currentUserID][userID].lastSeen = userData.lastLogin;
           sitters[currentUserID][userID].SitterSchedule = userData.sitterSched;
           sitters[currentUserID][userID].sitterSchedMatches = schedVar[0];
-          sitters[currentUserID][userID].cnxScore += schedMatchPoints(schedVar[1]);
+          sitters[currentUserID][userID].cnxScore += macs.schedMatchPoints(schedVar[1]);
         };
       });
       match(currentUserID, currentUserData.token, userIDs, true);
@@ -135,13 +136,13 @@ function onChange(snapshot) {
             var schedVar = schedComp(currentUserData.sitterSched, userData.parentSched);
             parents[currentUserID][userID] = {};
             parents[currentUserID][userID].cnxScore = 0;
-            parents[currentUserID][userID].cnxScore += lastSeen(userData.lastLogin);
+            parents[currentUserID][userID].cnxScore += macs.lastSeen(userData.lastLogin);
             parents[currentUserID][userID].userName = userData.userName || "parent";
             parents[currentUserID][userID].profileImgUrl = userData.profileImgUrl || stockImage;
             parents[currentUserID][userID].lastSeen = userData.lastLogin;
             parents[currentUserID][userID].ParentSchedule = userData.parentSched
             parents[currentUserID][userID].parentSchedMatches = schedVar[0];
-            parents[currentUserID][userID].cnxScore += schedMatchPoints(schedVar[1]);
+            parents[currentUserID][userID].cnxScore += macs.schedMatchPoints(schedVar[1]);
           };
         });
         match(currentUserID, currentUserData.token, userIDs, false);
@@ -174,10 +175,10 @@ function areFriends(parentID, sitterID, token, lookingForSitters) {
     if (response && !response.error && response.data.length) {
       if (lookingForSitters) {
         sitters[parentID][sitterID].degree = 1;
-        sitters[parentID][sitterID].cnxScore += 40;
+        sitters[parentID][sitterID].cnxScore += macs.areFriends;
       } else {
         parents[sitterID][parentID].degree = 1;
-        parents[sitterID][parentID].cnxScore += 40;
+        parents[sitterID][parentID].cnxScore += macs.areFriends;
       };
       mutualFriends_first(parentID, sitterID, token, lookingForSitters);
     } else { // not first degree friends
@@ -211,11 +212,11 @@ function mutualFriends_first(parentID, sitterID, token, lookingForSitters) {
       if (lookingForSitters) {
         sitters[parentID][sitterID].numberOfMutual = numberOfMutual;
         sitters[parentID][sitterID].mutualFriends = mutualFriends;
-        sitters[parentID][sitterID].cnxScore += mutualFriendsPoints(numberOfMutual);
+        sitters[parentID][sitterID].cnxScore += macs.mutualFriendsPoints(numberOfMutual);
       } else {
         parents[sitterID][parentID].numberOfMutual = numberOfMutual;
         parents[sitterID][parentID].mutualFriends = mutualFriends;
-        parents[sitterID][parentID].cnxScore += mutualFriendsPoints(numberOfMutual);
+        parents[sitterID][parentID].cnxScore += macs.mutualFriendsPoints(numberOfMutual);
       };
       setFirebaseList(parentID, sitterID, lookingForSitters); // update the firebase database
     };
@@ -241,11 +242,11 @@ function mutualFriends_second(parentID, sitterID, token, lookingForSitters) {
       var numberOfMutual = result.context.mutual_friends.summary.total_count;
       if (lookingForSitters) {
         sitters[parentID][sitterID].numberOfMutual = numberOfMutual;
-        sitters[parentID][sitterID].cnxScore += mutualFriendsPoints(numberOfMutual)
+        sitters[parentID][sitterID].cnxScore += macs.mutualFriendsPoints(numberOfMutual)
         sitters[parentID][sitterID].mutualFriends = getPictures(mutualFriends)
       } else {
         parents[sitterID][parentID].numberOfMutual = numberOfMutual;
-        parents[sitterID][parentID].cnxScore += mutualFriendsPoints(numberOfMutual)
+        parents[sitterID][parentID].cnxScore += macs.mutualFriendsPoints(numberOfMutual)
         parents[sitterID][parentID].mutualFriends = getPictures(mutualFriends);
       };
 
@@ -255,7 +256,6 @@ function mutualFriends_second(parentID, sitterID, token, lookingForSitters) {
 }
 
 function getPictures(mutualFriends){
-  console.log("pictureHash:", pictureHash);
   var returnArray = [];
   mutualFriends.forEach(function(friend){
     console.log("getPicture:", pictureHash[friend.id], "/ id:", friend.id);
@@ -266,12 +266,12 @@ function getPictures(mutualFriends){
 
 function setFirebaseList(parentID, sitterID, lookingForSitters) {
   if (lookingForSitters) {
-    console.log("======", sitters[parentID][sitterID].mutualFriends);
     sitterListRef = new Firebase("https://sitterbookapi.firebaseio.com/users/" + parentID + "/sitterList/" + sitterID);
     sitterListRef.update({
       userName: sitters[parentID][sitterID].userName,
       degree: sitters[parentID][sitterID].degree,
       cnxScore: sitters[parentID][sitterID].cnxScore,
+      cnxMatch: sitters[parentID][sitterID].cnxScore / macs.maxPoints,
       profileImgUrl: sitters[parentID][sitterID].profileImgUrl,
       numberOfMutual: sitters[parentID][sitterID].numberOfMutual,
       mutualFriends: sitters[parentID][sitterID].mutualFriends,
@@ -284,6 +284,7 @@ function setFirebaseList(parentID, sitterID, lookingForSitters) {
       userName: parents[sitterID][parentID].userName,
       degree: parents[sitterID][parentID].degree,
       cnxScore: parents[sitterID][parentID].cnxScore,
+      cnxMatch: parents[sitterID][parentID].cnxScore / macs.maxPoints,
       profileImgUrl: parents[sitterID][parentID].profileImgUrl,
       numberOfMutual: parents[sitterID][parentID].numberOfMutual,
       mutualFriends: parents[sitterID][parentID].mutualFriends,
@@ -293,31 +294,7 @@ function setFirebaseList(parentID, sitterID, lookingForSitters) {
   }
 }
 
-function lastSeen(lastLogin) {
-  // "2016-01-19 21:06:11 +0000"
-  var msLastLogin = Date.parse(lastLogin);
-  var timeNow = Date.now();
-  var timeDiff = timeNow - msLastLogin;
-  var ms2days = 86400000,
-      ms2hours = 3600000,
-      ms2minutes = 60000,
-      ms2seconds = 1000;
-  var diffdays = Math.floor(timeDiff / ms2days);
-  var diffhours = Math.floor((timeDiff % ms2days) / ms2hours);
-  var diffminutes = Math.floor((timeDiff % ms2hours) / ms2minutes);
-  var diffseconds = Math.floor((timeDiff % ms2minutes) / ms2seconds);
-  console.log("Time since last seen:", diffdays, "days,", diffhours, "hours,", diffminutes, "minutes,", diffseconds, "seconds.");
-  var score;
-  if (diffdays > 14) {
-    score = 0;
-  } else if (diffdays === 0) {
-    score = 50;
-  } else { // timeDiff between 1 - 14 days
-    score = Math.floor((1 - (Math.log(timeDiff / ms2days) / Math.log(14))) * 50); // points go from 50 - 0
-  };
-  console.log("Score:", score);
-  return score;
-}
+
 
 function schedComp(currentUserSched, userSched) {
   var count = 0;
@@ -356,29 +333,7 @@ function schedComp(currentUserSched, userSched) {
   return [matches, count];
 }
 
-function schedMatchPoints(schedMatches) {
-  var points = 0;
-  // change these numbers to balance the cnxScore. One schedule match gives the first value, more matches gives a fix additional amount
-  if (schedMatches === 1) { 
-    points = 100;
-  } else if (schedMatches > 1) {
-    points = 150;
-  };
-  console.log("Adding", points.toString(), "points to the cnxScore due to", schedMatches.toString(), "schedule matches.");
-  return points;
-}
 
-function mutualFriendsPoints(numberOfMutual) {
-  var points = 0;
-  if (numberOfMutual > 0) {
-    points = numberOfMutual;
-  }
-  if (numberOfMutual > 50) {
-    points = 50;
-  }
-  console.log("Adding", points, "points for mutual friends");
-  return points;
-}
 
 
 http.createServer(app).listen(app.get('port'), function() {
